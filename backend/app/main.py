@@ -9,7 +9,10 @@ from app.auth.security import hash_password
 from app.config import get_settings
 from app.db.base import async_session_maker
 from app.db.models import User
+from app.routers import accounts as accounts_router
 from app.routers import auth as auth_router
+from app.routers import chat as chat_router
+from app.telegram.client_pool import pool
 
 
 async def _seed_admin_user() -> None:
@@ -27,6 +30,7 @@ async def lifespan(app: FastAPI):
     # Schema is managed by Alembic migrations (run `alembic upgrade head` before first start).
     await _seed_admin_user()
     yield
+    await pool.disconnect_all()
 
 
 app = FastAPI(title="Telegram Prime", lifespan=lifespan)
@@ -41,6 +45,8 @@ app.add_middleware(
 app.add_middleware(RequireRequestedWithMiddleware)
 
 app.include_router(auth_router.router)
+app.include_router(accounts_router.router)
+app.include_router(chat_router.router)
 
 
 @app.get("/api/health")
