@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Camera } from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAccounts } from "../hooks/useAccounts"
 import { useAccountLiveSocket } from "../hooks/useAccountLiveSocket"
@@ -6,11 +7,15 @@ import { getDialogs, getMessages, sendMessage } from "../api/chat"
 import { DialogList } from "../components/chat/DialogList"
 import { MessageThread } from "../components/chat/MessageThread"
 import { MessageComposer } from "../components/chat/MessageComposer"
+import { StoryComposer } from "../components/chat/StoryComposer"
+import { Button } from "../components/ui/button"
+import { ApiError } from "../api/client"
 
 export function ChatPage() {
   const { data: accounts } = useAccounts()
   const [accountId, setAccountId] = useState<string | null>(null)
   const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null)
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false)
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -69,11 +74,27 @@ export function ChatPage() {
             </option>
           ))}
         </select>
+        {accountId && (
+          <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setStoryComposerOpen(true)}>
+            <Camera size={14} />
+            스토리 업로드
+          </Button>
+        )}
       </div>
+      {accountId && (
+        <StoryComposer open={storyComposerOpen} onClose={() => setStoryComposerOpen(false)} accountId={accountId} />
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         <div className="w-72 shrink-0 overflow-y-auto border-r border-border">
           {dialogsQuery.isLoading && <p className="p-4 text-sm text-muted-foreground">불러오는 중...</p>}
+          {dialogsQuery.isError && (
+            <p className="p-4 text-sm text-danger">
+              {dialogsQuery.error instanceof ApiError
+                ? dialogsQuery.error.message
+                : "대화 목록을 불러오지 못했습니다."}
+            </p>
+          )}
           {dialogsQuery.data && (
             <DialogList
               dialogs={dialogsQuery.data}

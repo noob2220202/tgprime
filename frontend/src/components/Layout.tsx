@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom"
-import { Users, Wand2, History, MessageCircle, Bot, LogOut } from "lucide-react"
+import { Users, Wand2, History, MessageCircle, Bot, LogOut, Moon, Sun } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useLogout } from "../hooks/useAuth"
+import { useTheme } from "../hooks/useTheme"
 import { Button } from "./ui/button"
 
 const NAV_ITEMS = [
@@ -14,11 +15,21 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const logoutMutation = useLogout()
+  const { theme, toggle } = useTheme()
 
   return (
     <div className="flex min-h-svh">
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
-        <div className="px-4 py-4 text-base font-semibold">Telegram Prime</div>
+        <div className="flex items-center justify-between px-4 py-4">
+          <span className="text-base font-semibold">Telegram Prime</span>
+          <button
+            onClick={toggle}
+            aria-label="테마 전환"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
         <nav className="flex flex-1 flex-col gap-1 px-2">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink

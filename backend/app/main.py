@@ -12,9 +12,11 @@ from app.db.models import User
 from app.jobs.queue import recover_pending_items, start_workers, stop_workers
 from app.routers import accounts as accounts_router
 from app.routers import auth as auth_router
+from app.routers import auto_reply as auto_reply_router
 from app.routers import bulk_jobs as bulk_jobs_router
 from app.routers import chat as chat_router
-from app.telegram import background_tasks
+from app.routers import stories as stories_router
+from app.telegram import auto_reply, background_tasks
 from app.telegram.client_pool import pool
 
 
@@ -32,6 +34,7 @@ async def _seed_admin_user() -> None:
 async def lifespan(app: FastAPI):
     # Schema is managed by Alembic migrations (run `alembic upgrade head` before first start).
     await _seed_admin_user()
+    pool.on_new_client(auto_reply.register_for_client)
     settings = get_settings()
     start_workers(settings.bulk_job_worker_count)
     await recover_pending_items()
@@ -58,6 +61,8 @@ app.include_router(accounts_router.router)
 app.include_router(chat_router.router)
 app.include_router(chat_router.ws_router)
 app.include_router(bulk_jobs_router.router)
+app.include_router(auto_reply_router.router)
+app.include_router(stories_router.router)
 
 
 @app.get("/api/health")

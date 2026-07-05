@@ -1,9 +1,15 @@
 import asyncio
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from telethon import TelegramClient
 from telethon.sessions import StringSession
+
+
+class InvalidSessionError(RuntimeError):
+    """Raised when a stored session can't be parsed or connected — a
+    corrupted/foreign session string, not a transient network issue."""
 
 
 class ClientPool:
@@ -17,9 +23,21 @@ class ClientPool:
         self._clients: dict[str, TelegramClient] = {}
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._last_used: dict[str, datetime] = {}
+        self._new_client_hooks: list[Callable[[str, TelegramClient], None]] = []
 
     def lock(self, account_id: str) -> asyncio.Lock:
         return self._locks[account_id]
+
+    def on_new_client(self, hook: Callable[[str, TelegramClient], None]) -> None:
+        """Registers a callback invoked whenever a *new* client is added to the
+        pool (fresh connect or hand-off from login/import) — e.g. to attach
+        feature-specific event handlers like auto-reply without coupling
+        this generic pool to those features."""
+        self._new_client_hooks.append(hook)
+
+    def _run_new_client_hooks(self, account_id: str, client: TelegramClient) -> None:
+        for hook in self._new_client_hooks:
+            hook(account_id, client)
 
     async def get_or_connect(self, account_id: str, api_id: int, api_hash: str, session_str: str) -> TelegramClient:
         self._last_used[account_id] = datetime.utcnow()
@@ -27,15 +45,21 @@ class ClientPool:
         if client is not None and client.is_connected():
             return client
 
-        client = TelegramClient(StringSession(session_str), api_id, api_hash)
-        await client.connect()
+        try:
+            client = TelegramClient(StringSession(session_str), api_id, api_hash)
+            await client.connect()
+        except Exception as e:
+            raise InvalidSessionError(f"세션에 연결할 수 없습니다: {e}") from e
+
         self._clients[account_id] = client
+        self._run_new_client_hooks(account_id, client)
         return client
 
     def register(self, account_id: str, client: TelegramClient) -> None:
         """Hand off an already-connected client (e.g. one that just finished login)."""
         self._clients[account_id] = client
         self._last_used[account_id] = datetime.utcnow()
+        self._run_new_client_hooks(account_id, client)
 
     async def disconnect(self, account_id: str) -> None:
         client = self._clients.pop(account_id, None)

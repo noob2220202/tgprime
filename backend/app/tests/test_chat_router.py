@@ -10,6 +10,7 @@ from app.db.base import Base, get_db
 from app.db.models import TelegramAccount, User
 from app.main import app
 from app.telegram import account_client
+from app.telegram.client_pool import InvalidSessionError
 from app.telegram.crypto import encrypt
 
 AUTH_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
@@ -135,3 +136,49 @@ async def test_send_message(client_with_account):
     assert body["text"] == "hello world"
     assert body["out"] is True
     assert len(fake_client.sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_corrupt_session_returns_400_not_500(monkeypatch):
+    # Exercises the *real* connected_client / pool.get_or_connect path (not
+    # mocked away like the fixture above) to make sure a corrupted session
+    # string surfaces as a clean 400 instead of crashing with a 500.
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    async def override_get_db():
+        async with session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    async with session_maker() as session:
+        session.add(User(username="admin", password_hash=hash_password("secret123")))
+        account = TelegramAccount(
+            label="Test",
+            api_id=1,
+            api_hash_encrypted=encrypt("hash"),
+            session_encrypted=encrypt("not-a-real-session-string"),
+            status="active",
+        )
+        session.add(account)
+        await session.commit()
+        await session.refresh(account)
+        account_id = account.id
+
+    transport = ASGITransport(app=app)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            res = await ac.post(
+                "/api/auth/login", json={"username": "admin", "password": "secret123"}, headers=AUTH_HEADERS
+            )
+            assert res.status_code == 200
+
+            res = await ac.get(f"/api/accounts/{account_id}/dialogs")
+            assert res.status_code == 400
+            assert "세션" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+        await engine.dispose()

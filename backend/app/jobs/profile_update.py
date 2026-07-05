@@ -10,7 +10,7 @@ from app.db.base import async_session_maker
 from app.db.models import BulkJob, BulkJobItem, TelegramAccount
 from app.jobs.queue import schedule_retry
 from app.telegram import profile_ops
-from app.telegram.client_pool import pool
+from app.telegram.client_pool import InvalidSessionError, pool
 from app.telegram.crypto import decrypt
 
 FLOOD_WAIT_BUFFER_SECONDS = 5
@@ -131,6 +131,20 @@ async def process_item(item_id: str) -> None:
             account.flood_wait_until = datetime.utcnow() + timedelta(seconds=e.seconds)
             await db.commit()
         schedule_retry(item_id, e.seconds + FLOOD_WAIT_BUFFER_SECONDS)
+        return
+    except InvalidSessionError as e:
+        async with async_session_maker() as db:
+            item = await db.get(BulkJobItem, item_id)
+            job = await db.get(BulkJob, item.job_id)
+            account = await db.get(TelegramAccount, account_id)
+            item.status = "failed"
+            item.error_message = str(e)
+            item.finished_at = datetime.utcnow()
+            account.status = "error"
+            account.status_detail = str(e)
+            job.failed_count += 1
+            await _finish_job_if_complete(db, job)
+            await db.commit()
         return
     except PeerFloodError as e:
         async with async_session_maker() as db:

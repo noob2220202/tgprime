@@ -10,6 +10,7 @@ from telethon.errors import FloodWaitError, PeerFloodError
 from app.db.base import Base
 from app.db.models import BulkJob, BulkJobItem, TelegramAccount
 from app.jobs import profile_update
+from app.telegram.client_pool import InvalidSessionError
 from app.telegram.crypto import encrypt
 
 
@@ -159,6 +160,28 @@ async def test_peer_flood_pauses_job_for_remaining_items(job_session_maker, monk
         second_item = await db.get(BulkJobItem, second_item_id)
     assert second_item.status == "failed"
     assert "일시중단" in second_item.error_message
+
+
+@pytest.mark.asyncio
+async def test_corrupt_session_marks_item_and_account_failed(job_session_maker, monkeypatch):
+    account_id, job_id, item_id = await _make_job_and_item(job_session_maker)
+
+    async def raise_invalid_session(*a, **k):
+        raise InvalidSessionError("세션에 연결할 수 없습니다: Not a valid string")
+
+    monkeypatch.setattr(profile_update.pool, "get_or_connect", raise_invalid_session)
+
+    await profile_update.process_item(item_id)
+
+    async with job_session_maker() as db:
+        item = await db.get(BulkJobItem, item_id)
+        job = await db.get(BulkJob, job_id)
+        account = await db.get(TelegramAccount, account_id)
+
+    assert item.status == "failed"
+    assert "세션에 연결할 수 없습니다" in item.error_message
+    assert account.status == "error"
+    assert job.status == "completed_with_errors"
 
 
 @pytest.mark.asyncio

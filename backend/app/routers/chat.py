@@ -9,7 +9,7 @@ from app.db.base import get_db
 from app.db.models import TelegramAccount, User
 from app.schemas.chat import DialogOut, MessageOut
 from app.telegram.account_client import connected_client
-from app.telegram.client_pool import pool
+from app.telegram.client_pool import InvalidSessionError, pool
 from app.telegram.crypto import decrypt
 
 router = APIRouter(prefix="/api/accounts", tags=["chat"], dependencies=[Depends(get_current_user)])
@@ -38,6 +38,8 @@ async def get_dialogs(account_id: str, db: AsyncSession = Depends(get_db)):
             dialogs = [d async for d in client.iter_dialogs(limit=50)]
     except LookupError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    except InvalidSessionError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
     return [
         DialogOut(
@@ -65,6 +67,8 @@ async def get_messages(
             messages = [m async for m in client.iter_messages(peer_id, limit=limit, offset_id=before_id or 0)]
     except LookupError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    except InvalidSessionError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except ValueError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Peer not found")
 
@@ -87,6 +91,8 @@ async def send_message(
             sent = await client.send_message(peer_id, payload.text)
     except LookupError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    except InvalidSessionError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except ValueError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Peer not found")
 
@@ -115,10 +121,14 @@ async def account_live(websocket: WebSocket, account_id: str, db: AsyncSession =
 
     await websocket.accept()
 
-    async with pool.lock(account_id):
-        client = await pool.get_or_connect(
-            account_id, account.api_id, decrypt(account.api_hash_encrypted), decrypt(account.session_encrypted)
-        )
+    try:
+        async with pool.lock(account_id):
+            client = await pool.get_or_connect(
+                account_id, account.api_id, decrypt(account.api_hash_encrypted), decrypt(account.session_encrypted)
+            )
+    except InvalidSessionError:
+        await websocket.close(code=4400)
+        return
 
     async def handler(event) -> None:
         message = event.message
