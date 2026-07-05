@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f1115;
+  --muted: #f4f5f7;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --sidebar: #fafafa;
+  --card: #ffffff;
+
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --info: #2563eb;
+  --info-bg: #dbeafe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0b0c0f;
+    --foreground: #f3f4f6;
+    --muted: #16181d;
+    --muted-foreground: #9ca3af;
+    --border: #262931;
+    --sidebar: #101216;
+    --card: #131519;
+
+    --primary: #818cf8;
+    --primary-foreground: #0b0c0f;
+
+    --success: #4ade80;
+    --success-bg: rgba(74, 222, 128, 0.15);
+    --warning: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.15);
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.15);
+    --info: #60a5fa;
+    --info-bg: rgba(96, 165, 250, 0.15);
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #0b0c0f;
+  --foreground: #f3f4f6;
+  --muted: #16181d;
+  --muted-foreground: #9ca3af;
+  --border: #262931;
+  --sidebar: #101216;
+  --card: #131519;
+
+  --primary: #818cf8;
+  --primary-foreground: #0b0c0f;
+
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.15);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.15);
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.15);
+  --info: #60a5fa;
+  --info-bg: rgba(96, 165, 250, 0.15);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-sidebar: var(--sidebar);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+#root {
+  min-height: 100svh;
+}

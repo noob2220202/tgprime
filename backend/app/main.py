@@ -1,0 +1,48 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
+
+from app.auth.csrf import RequireRequestedWithMiddleware
+from app.auth.security import hash_password
+from app.config import get_settings
+from app.db.base import async_session_maker
+from app.db.models import User
+from app.routers import auth as auth_router
+
+
+async def _seed_admin_user() -> None:
+    settings = get_settings()
+    async with async_session_maker() as db:
+        result = await db.execute(select(User).where(User.username == settings.admin_username))
+        if result.scalar_one_or_none() is not None:
+            return
+        db.add(User(username=settings.admin_username, password_hash=hash_password(settings.admin_password)))
+        await db.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Schema is managed by Alembic migrations (run `alembic upgrade head` before first start).
+    await _seed_admin_user()
+    yield
+
+
+app = FastAPI(title="Telegram Prime", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(RequireRequestedWithMiddleware)
+
+app.include_router(auth_router.router)
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
