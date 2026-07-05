@@ -21,6 +21,7 @@ from app.schemas.accounts import (
     VerifyCodeResponse,
 )
 from app.telegram import login_flow, session_import
+from app.telegram.health_check import check_account_health
 from app.telegram.login_flow import LoginSessionExpired
 from app.telegram.session_import import SessionNotAuthorized
 
@@ -90,4 +91,15 @@ async def import_session(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except RPCError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    return account
+
+
+@router.post("/{account_id}/refresh-status", response_model=AccountOut)
+async def refresh_account_status(account_id: str, db: AsyncSession = Depends(get_db)):
+    account = await db.get(TelegramAccount, account_id)
+    if account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    await check_account_health(db, account)
+    await db.commit()
+    await db.refresh(account)
     return account

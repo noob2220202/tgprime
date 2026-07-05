@@ -39,6 +39,10 @@ export function loginVerify2fa(payload: { login_session_id: string; password: st
   })
 }
 
+export function refreshAccountStatus(accountId: string) {
+  return apiFetch<Account>(`/api/accounts/${accountId}/refresh-status`, { method: "POST" })
+}
+
 export function importSession(payload: { label: string; api_id: string; api_hash: string; file: File }) {
   const form = new FormData()
   form.set("label", payload.label)

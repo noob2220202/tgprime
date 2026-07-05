@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     profile_edit_max_jitter_seconds: float = 15.0
     profile_edit_min_cooldown_minutes: int = 30
 
+    health_check_interval_seconds: float = 600
+    idle_client_timeout_minutes: float = 30
+
 
 @lru_cache
 def get_settings() -> Settings:

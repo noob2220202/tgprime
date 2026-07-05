@@ -14,6 +14,7 @@ from app.routers import accounts as accounts_router
 from app.routers import auth as auth_router
 from app.routers import bulk_jobs as bulk_jobs_router
 from app.routers import chat as chat_router
+from app.telegram import background_tasks
 from app.telegram.client_pool import pool
 
 
@@ -34,7 +35,9 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     start_workers(settings.bulk_job_worker_count)
     await recover_pending_items()
+    background_tasks.start(settings.health_check_interval_seconds, settings.idle_client_timeout_minutes)
     yield
+    await background_tasks.stop()
     await stop_workers()
     await pool.disconnect_all()
 

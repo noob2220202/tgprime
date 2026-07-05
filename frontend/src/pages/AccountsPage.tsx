@@ -1,14 +1,22 @@
 import { useState } from "react"
-import { Plus } from "lucide-react"
+import { Plus, RefreshCw } from "lucide-react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
 import { AccountStatusBadge } from "../components/ui/badge"
 import { OnboardingWizard } from "../components/OnboardingWizard/OnboardingWizard"
 import { useAccounts } from "../hooks/useAccounts"
+import { refreshAccountStatus } from "../api/accounts"
 
 export function AccountsPage() {
   const [wizardOpen, setWizardOpen] = useState(false)
   const { data: accounts, isLoading } = useAccounts()
+  const queryClient = useQueryClient()
+
+  const refreshMutation = useMutation({
+    mutationFn: refreshAccountStatus,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+  })
 
   return (
     <div className="p-6">
@@ -38,6 +46,7 @@ export function AccountsPage() {
                 <th className="px-4 py-3 font-medium">유저네임</th>
                 <th className="px-4 py-3 font-medium">이름</th>
                 <th className="px-4 py-3 font-medium">상태</th>
+                <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody>
@@ -53,6 +62,17 @@ export function AccountsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <AccountStatusBadge status={account.status} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => refreshMutation.mutate(account.id)}
+                      disabled={refreshMutation.isPending}
+                      aria-label="상태 새로고침"
+                    >
+                      <RefreshCw size={14} />
+                    </Button>
                   </td>
                 </tr>
               ))}
