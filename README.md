@@ -17,7 +17,15 @@
 - Node.js 18+
 - 텔레그램 API 자격증명(`api_id`, `api_hash`) — https://my.telegram.org 에서 발급
 
-## 백엔드 실행
+## 0. 클론
+
+```bash
+git clone https://github.com/noob2220202/tgprime.git
+cd tgprime
+git checkout claude/telegram-prime-saas-82ymc0   # 아직 main에 머지 전이면 이 브랜치 사용
+```
+
+## 1. 백엔드 실행
 
 ```bash
 cd backend
@@ -38,15 +46,19 @@ uvicorn app.main:app --reload
 
 백엔드는 `http://127.0.0.1:8000`에서 실행됩니다. DB는 `backend/data/app.db` SQLite 파일 하나입니다.
 
-## 프론트엔드 실행
+## 2. 프론트엔드 실행 (새 터미널)
 
 ```bash
-cd frontend
+cd tgprime/frontend
 npm install
 npm run dev
 ```
 
-`http://127.0.0.1:5173`에서 접속하고, `.env`에 설정한 `ADMIN_USERNAME`/`ADMIN_PASSWORD`로 로그인하세요.
+`http://127.0.0.1:5173`에서 접속하고, `.env`에 설정한 `ADMIN_USERNAME`/`ADMIN_PASSWORD`로 로그인하세요. (기본값 `admin` / `change-me` — `.env`에서 바꾸지 않았다면 이 값으로 로그인)
+
+## 3. 텔레그램 계정 추가
+
+"계정" 페이지에서 "계정 추가" → my.telegram.org에서 발급받은 `api_id`/`api_hash`와 전화번호 입력 → 텔레그램 앱으로 온 코드 입력 (2단계 인증이 켜져 있으면 비밀번호까지) → 완료.
 
 ## 테스트
 
