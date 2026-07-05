@@ -4,6 +4,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute"
 import { LoginPage } from "./pages/LoginPage"
 import { AccountsPage } from "./pages/AccountsPage"
 import { ChatPage } from "./pages/ChatPage"
+import { BulkEditPage } from "./pages/BulkEditPage"
+import { JobsHistoryPage } from "./pages/JobsHistoryPage"
 import { PlaceholderPage } from "./pages/PlaceholderPage"
 
 export function App() {
@@ -19,9 +21,9 @@ export function App() {
       >
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/bulk-edit" element={<PlaceholderPage title="일괄 편집" />} />
+        <Route path="/bulk-edit" element={<BulkEditPage />} />
         <Route path="/auto-reply" element={<PlaceholderPage title="자동응답" />} />
-        <Route path="/jobs" element={<PlaceholderPage title="작업 이력" />} />
+        <Route path="/jobs" element={<JobsHistoryPage />} />
         <Route path="/" element={<Navigate to="/accounts" replace />} />
       </Route>
     </Routes>

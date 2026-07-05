@@ -9,8 +9,10 @@ from app.auth.security import hash_password
 from app.config import get_settings
 from app.db.base import async_session_maker
 from app.db.models import User
+from app.jobs.queue import recover_pending_items, start_workers, stop_workers
 from app.routers import accounts as accounts_router
 from app.routers import auth as auth_router
+from app.routers import bulk_jobs as bulk_jobs_router
 from app.routers import chat as chat_router
 from app.telegram.client_pool import pool
 
@@ -29,7 +31,11 @@ async def _seed_admin_user() -> None:
 async def lifespan(app: FastAPI):
     # Schema is managed by Alembic migrations (run `alembic upgrade head` before first start).
     await _seed_admin_user()
+    settings = get_settings()
+    start_workers(settings.bulk_job_worker_count)
+    await recover_pending_items()
     yield
+    await stop_workers()
     await pool.disconnect_all()
 
 
@@ -48,6 +54,7 @@ app.include_router(auth_router.router)
 app.include_router(accounts_router.router)
 app.include_router(chat_router.router)
 app.include_router(chat_router.ws_router)
+app.include_router(bulk_jobs_router.router)
 
 
 @app.get("/api/health")

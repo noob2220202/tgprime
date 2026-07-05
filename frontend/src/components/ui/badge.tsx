@@ -52,3 +52,47 @@ export function AccountStatusBadge({ status }: { status: string }) {
     </Badge>
   )
 }
+
+const JOB_STATUS_TONE: Record<string, BadgeTone> = {
+  pending: "neutral",
+  running: "info",
+  completed: "success",
+  completed_with_errors: "warning",
+  paused_flood: "danger",
+  cancelled: "neutral",
+}
+
+const JOB_STATUS_LABEL: Record<string, string> = {
+  pending: "대기",
+  running: "진행 중",
+  completed: "완료",
+  completed_with_errors: "일부 실패",
+  paused_flood: "일시중단 (PeerFlood)",
+  cancelled: "취소됨",
+}
+
+export function JobStatusBadge({ status }: { status: string }) {
+  return <Badge tone={JOB_STATUS_TONE[status] ?? "neutral"}>{JOB_STATUS_LABEL[status] ?? status}</Badge>
+}
+
+const JOB_ITEM_STATUS_TONE: Record<string, BadgeTone> = {
+  pending: "neutral",
+  running: "info",
+  succeeded: "success",
+  failed: "danger",
+  skipped_flood_wait: "warning",
+}
+
+const JOB_ITEM_STATUS_LABEL: Record<string, string> = {
+  pending: "대기",
+  running: "진행 중",
+  succeeded: "성공",
+  failed: "실패",
+  skipped_flood_wait: "FloodWait 대기",
+}
+
+export function JobItemStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge tone={JOB_ITEM_STATUS_TONE[status] ?? "neutral"}>{JOB_ITEM_STATUS_LABEL[status] ?? status}</Badge>
+  )
+}
