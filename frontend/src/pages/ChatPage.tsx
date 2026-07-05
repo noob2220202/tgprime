@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAccounts } from "../hooks/useAccounts"
-import { getDialogs, getMessages } from "../api/chat"
+import { useAccountLiveSocket } from "../hooks/useAccountLiveSocket"
+import { getDialogs, getMessages, sendMessage } from "../api/chat"
 import { DialogList } from "../components/chat/DialogList"
 import { MessageThread } from "../components/chat/MessageThread"
+import { MessageComposer } from "../components/chat/MessageComposer"
 
 export function ChatPage() {
   const { data: accounts } = useAccounts()
   const [accountId, setAccountId] = useState<string | null>(null)
   const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!accountId && accounts && accounts.length > 0) {
       setAccountId(accounts[0].id)
     }
   }, [accounts, accountId])
+
+  useAccountLiveSocket(accountId)
 
   const dialogsQuery = useQuery({
     queryKey: ["dialogs", accountId],
@@ -26,6 +31,16 @@ export function ChatPage() {
     queryKey: ["messages", accountId, selectedPeerId],
     queryFn: () => getMessages(accountId as string, selectedPeerId as number),
     enabled: !!accountId && selectedPeerId !== null,
+  })
+
+  const sendMutation = useMutation({
+    mutationFn: (text: string) => sendMessage(accountId as string, selectedPeerId as number, text),
+    onSuccess: (message) => {
+      queryClient.setQueryData(["messages", accountId, selectedPeerId], (old: typeof message[] | undefined) =>
+        old ? [...old, message] : [message]
+      )
+      queryClient.invalidateQueries({ queryKey: ["dialogs", accountId] })
+    },
   })
 
   if (!accounts || accounts.length === 0) {
@@ -73,12 +88,17 @@ export function ChatPage() {
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               왼쪽에서 대화를 선택하세요.
             </div>
-          ) : messagesQuery.isLoading ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-              불러오는 중...
-            </div>
           ) : (
-            <MessageThread messages={messagesQuery.data ?? []} />
+            <>
+              {messagesQuery.isLoading ? (
+                <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                  불러오는 중...
+                </div>
+              ) : (
+                <MessageThread messages={messagesQuery.data ?? []} />
+              )}
+              <MessageComposer onSend={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending} />
+            </>
           )}
         </div>
       </div>

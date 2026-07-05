@@ -38,3 +38,12 @@ export function loginVerify2fa(payload: { login_session_id: string; password: st
     body: JSON.stringify(payload),
   })
 }
+
+export function importSession(payload: { label: string; api_id: string; api_hash: string; file: File }) {
+  const form = new FormData()
+  form.set("label", payload.label)
+  form.set("api_id", payload.api_id)
+  form.set("api_hash", payload.api_hash)
+  form.set("session_file", payload.file)
+  return apiFetch<Account>("/api/accounts/import-session", { method: "POST", body: form })
+}

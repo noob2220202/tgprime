@@ -7,11 +7,13 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData
   const res = await fetch(path, {
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      // Let the browser set Content-Type (incl. multipart boundary) for FormData bodies.
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       "X-Requested-With": "XMLHttpRequest",
       ...options.headers,
     },

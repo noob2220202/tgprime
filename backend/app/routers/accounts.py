@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.errors import (
@@ -20,8 +20,11 @@ from app.schemas.accounts import (
     VerifyCodeRequest,
     VerifyCodeResponse,
 )
-from app.telegram import login_flow
+from app.telegram import login_flow, session_import
 from app.telegram.login_flow import LoginSessionExpired
+from app.telegram.session_import import SessionNotAuthorized
+
+MAX_SESSION_FILE_BYTES = 5 * 1024 * 1024
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"], dependencies=[Depends(get_current_user)])
 
@@ -65,5 +68,26 @@ async def login_verify_2fa(payload: Verify2FARequest, db: AsyncSession = Depends
     except PasswordHashInvalidError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "2단계 인증 비밀번호가 올바르지 않습니다.")
     except LoginSessionExpired as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    return account
+
+
+@router.post("/import-session", response_model=AccountOut)
+async def import_session(
+    label: str = Form(...),
+    api_id: int = Form(...),
+    api_hash: str = Form(...),
+    session_file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    file_bytes = await session_file.read()
+    if len(file_bytes) > MAX_SESSION_FILE_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "파일이 너무 큽니다.")
+
+    try:
+        account = await session_import.import_session_file(db, label, api_id, api_hash, file_bytes)
+    except SessionNotAuthorized as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    except RPCError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     return account

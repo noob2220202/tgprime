@@ -24,3 +24,15 @@ export function getDialogs(accountId: string) {
 export function getMessages(accountId: string, peerId: number) {
   return apiFetch<Message[]>(`/api/accounts/${accountId}/dialogs/${peerId}/messages`)
 }
+
+export function sendMessage(accountId: string, peerId: number, text: string) {
+  return apiFetch<Message>(`/api/accounts/${accountId}/dialogs/${peerId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  })
+}
+
+export function liveSocketUrl(accountId: string): string {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+  return `${protocol}//${window.location.host}/api/accounts/${accountId}/live`
+}
